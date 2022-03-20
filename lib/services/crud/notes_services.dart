@@ -13,22 +13,25 @@ class NotesService {
   List<DatabaseNote> _notes = [];
 
   static final NotesService _shared = NotesService._sharedInstance();
-  NotesService._sharedInstance();
+  NotesService._sharedInstance() {
+    _notesStreamController = StreamController<List<DatabaseNote>>.broadcast(
+      onListen: () {
+        _notesStreamController.sink.add(_notes);
+      },
+    );
+  }
   factory NotesService() => _shared;
 
-  final _notesStreamController =
-      StreamController<List<DatabaseNote>>.broadcast();
+  late final StreamController<List<DatabaseNote>> _notesStreamController;
 
   Stream<List<DatabaseNote>> get allNotes => _notesStreamController.stream;
 
   Future<DatabaseUser> getOrCreateUser({required String email}) async {
     try {
       final user = await getUser(email: email);
-      print('user already present');
       return user;
     } on CouldNotFindUser {
       final createdUser = await createUser(email: email);
-      print('new user created');
       return createdUser;
     } catch (e) {
       rethrow;
@@ -143,7 +146,6 @@ class NotesService {
       text: text,
       isSyncedWithCloud: true,
     );
-    print('new not added');
     _notes.add(note);
     _notesStreamController.add(_notes);
 
@@ -160,10 +162,8 @@ class NotesService {
       whereArgs: [email.toLowerCase()],
     );
     if (results.isEmpty) {
-      print('user not found in db');
       throw CouldNotFindUser();
     } else {
-      print('user found in db');
       return DatabaseUser.fromRow(results.first);
     }
   }
